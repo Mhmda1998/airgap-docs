@@ -1,4 +1,4 @@
-name: deploy
+name: Deploy
 
 on:
   pull_request:
@@ -6,43 +6,32 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
-  checks:
-    if: github.event_name != 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
-        with:
-          node-version: "14.x"
-      - name: Test Build
-        run: |
-          if [ -e yarn.lock ]; then
-          yarn install --frozen-lockfile
-          elif [ -e package-lock.json ]; then
-          npm ci
-          else
-          npm i
-          fi
-          npm run build
   gh-release:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          node-version: "14.x"
-      - name: Build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.x"
+
+      - name: Build and Deploy
         run: |
           npm ci
           npm run build
+          # تأكد أن مجلد البناء هو 'build' بناءً على ملفك القديم
           cd build
           git config --global user.email "support+actions@github.com"
           git config --global user.name "github-actions-bot"
           git init
           git add -A
-          git commit -m 'chore(docs): including latest changes'
-          git push -f https://git:${GITHUB_TOKEN}@github.com/airgap-it/airgap-docs.git master:gh-pages
+          git commit -m 'chore(docs): auto-deploy'
+          git push -f https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git HEAD:gh-pages
